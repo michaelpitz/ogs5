@@ -283,6 +283,7 @@ public:
     double maximum_saturation[MAX_FLUID_PHASES];
     double saturation_exponent[MAX_FLUID_PHASES];
     double perm_saturation_value[MAX_FLUID_PHASES];
+    double pore_connectivity_exponent[MAX_FLUID_PHASES];
     //
     std::string
         permeability_file;  // SB //OK/MB string permeability_dis_type_file;

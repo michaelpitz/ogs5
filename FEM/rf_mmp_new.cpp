@@ -1231,6 +1231,46 @@ std::ios::pos_type CMediumProperties::Read(std::ifstream* mmp_file)
                                                             // phase
                         break;
                     //
+                    case 41:  // 2-phase Van Genuchten/Mualem Model with pore 
+                        // connectivity exponent  WETTING
+                        // krw = pow(se,pore_connectivity) *
+                        // pow(1.0-pow(1.0-pow(se,1.0/m),m),2) Se  = (sl - slr)
+                        // / (slm - slr)
+                        in >> residual_saturation[k];  // slr: residual
+                                                       // saturation, this phase
+                        in >> maximum_saturation[k];   // slm: maximum
+                                                       // saturation, this phase
+                        in >> saturation_exponent[k];  // exponent (always
+                                                       // <= 1.0) --> (typical
+                                                       // is 0.5) i.e. n = 1 /
+                                                       // (1 - exponent) == 2.0
+                        in >>
+                            minimum_relative_permeability;  // minimum relative
+                                                            // permeability this
+                                                            // phase
+                        in >> pore_connectivity_exponent[k]; // pore connecti-
+                                                             // vity this phase
+                        break;
+                    //
+                    case 441:  // 2-phase Van Genuchten/Mualem Model with pore
+                                // connectivity exponent NON-WETTING
+                        // Water Resour. Res. VOL. 23, pp2197-2206 1987. Air
+                        in >> residual_saturation[k];  // sgr: residual
+                                                       // saturation, this phase
+                        in >> maximum_saturation[k];   // sgm: maximum
+                                                       // saturation, this phase
+                        in >> saturation_exponent[k];  // exponent (always
+                                                       // <= 1.0) --> (typical
+                                                       // is 0.5) i.e. n = 1 /
+                                                       // (1 - exponent) == 2.0
+                        in >>
+                            minimum_relative_permeability;  // minimum relative
+                                                            // permeability this
+                                                            // phase
+                        in >> pore_connectivity_exponent[k]; // pore connecti-
+                                                             // vity this phase
+                        break;
+                    //    
                     case 6:  // Brooks/Corey						   WETTING
                         // krw = pow(se,3.0+2.0/m)
                         // Se  = (sl - slr) / (slm - slr)
@@ -2490,7 +2530,7 @@ double CMediumProperties::GetEffectiveSaturationForPerm(
 double CMediumProperties::PermeabilitySaturationFunction(
     const double wetting_saturation, int phase)
 {
-    double kr = 0.0, sl, se, slr, slm, m, b;
+    double kr = 0.0, sl, se, slr, slm, m, b, pce;
     int model, gueltig;
     bool phase_shift = false;
     sl = wetting_saturation;
@@ -2621,6 +2661,37 @@ double CMediumProperties::PermeabilitySaturationFunction(
             // kr = minimum_relative_permeability;
             break;
         //
+        case 41:  // 2-phase VAN GENUCHTEN/MUALEM with variable pore connectivity
+                  // exponent --> WETTING
+            slr = residual_saturation[phase];
+            slm = maximum_saturation[phase];
+            m = saturation_exponent[phase];  // always <= 1.0.  Input is
+                                             // exponent = 1 / (1-lambda)
+            sl = MRange(slr, sl, slm);
+            se = (sl - slr) / (slm - slr);
+            pce = pore_connectivity_exponent[phase]; //typically between 0.2 and 0.6
+            //
+            kr = pow(se,pce) * pow(1.0 - pow(1.0 - pow(se, 1.0 / m), m), 2);
+            if (kr < minimum_relative_permeability)
+                kr = minimum_relative_permeability;
+            break;
+        // 
+        case 441:  // 2-phase VAN GENUCHTEN/MUALEM with variable pore connectivity
+            // exponent --> NON-WETTING
+            // Water Resour. Res. VOL. 23, pp2197-2206 1987. Air
+            slr = 1.0 - maximum_saturation[phase];   // slr = 1.0 - sgm
+            slm = 1.0 - residual_saturation[phase];  // slm = 1.0 - sgr
+            m = saturation_exponent[phase];          // always <= 1.0.  Input is
+                                             // exponent = 1 / (1-lambda)
+            sl = MRange(slr, sl, slm);
+            se = (sl - slr) / (slm - slr);
+            pce = pore_connectivity_exponent[phase];
+            //
+            kr =
+                pow(1.0 - se, pce) * pow(1.0 - pow(se, 1.0 / m), 2.0 * m);
+            if (kr < minimum_relative_permeability)
+                kr = minimum_relative_permeability;       
+            break;    
         case 6:  // 2-phase BROOKS/COREY --> WETTING
             slr = residual_saturation[phase];
             slm = maximum_saturation[phase];
